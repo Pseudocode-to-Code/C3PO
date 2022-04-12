@@ -71,6 +71,6 @@ def create_features(row: pd.Series, pseudo_token_column: str) -> dict:
 
 def apply_function_to_column(row: pd.Series, function: callable, col_name: str, *args, **kwargs) -> pd.Series:
     """
-    Apply function to each row of dataframe
+    Apply function to column of dataframe row
     """
     return function(row[col_name], *args, **kwargs)
