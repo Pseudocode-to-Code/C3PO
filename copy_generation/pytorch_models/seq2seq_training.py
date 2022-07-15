@@ -12,6 +12,7 @@ from dataloader import *
 
 parser = argparse.ArgumentParser(description="Seq2Seq Training")
 parser.add_argument('--attention', '-a', default=False, action="store_true", help='Train Attention model')
+parser.add_argument('--non-copy', '-n', default=False, action='store_true', help='Train on non-copy dataset')
 args = parser.parse_args()
 
 if args.attention:
@@ -32,16 +33,24 @@ learning_rate = 0.001
 batch_size = 32 # 64
 
 
-f = open('../../data/CPY_dataset.pkl', 'rb')
-data = pickle.load(f)
-f.close()
-data
+# f = open('../../data/CPY_dataset.pkl', 'rb')
+# data = pickle.load(f)
+# f.close()
+# data
+
+data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
 
 pseudo_voc = Vocabulary()
-pseudo_voc.build_vocabulary(data, 'pseudo_gen_seq')
+if args.non_copy:
+    pseudo_voc.build_vocabulary(data, 'pseudo_token')
+else:
+    pseudo_voc.build_vocabulary(data, 'pseudo_gen_seq')
 
 code_voc = Vocabulary()
-code_voc.build_vocabulary(data, 'code_gen_seq_aug')
+if args.non_copy:
+    code_voc.build_vocabulary(data, 'code_token_aug')
+else:
+    code_voc.build_vocabulary(data, 'code_gen_seq_aug')
 
 # Model hyperparameters
 load_model = False

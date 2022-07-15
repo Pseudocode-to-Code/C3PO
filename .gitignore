@@ -129,6 +129,7 @@ dmypy.json
 .pyre/
 *.h5
 *.pkl
+!*CPY_dataset*
 
 copy_generation/checkpoints
 events*
