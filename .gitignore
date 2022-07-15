@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+*.h5
+*.pkl
+
+copy_generation/checkpoints
+events*
+
+*.tar 
+*.pth 
+*.DS_Store
