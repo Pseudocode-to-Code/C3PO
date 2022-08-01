@@ -28,9 +28,9 @@ else:
 
 
 # Training hyperparameters
-num_epochs = 1 #100
+num_epochs = 100
 learning_rate = 0.001
-batch_size = 32 # 64
+batch_size = 64
 
 
 # f = open('../../data/CPY_dataset.pkl', 'rb')
@@ -54,13 +54,13 @@ else:
 
 # Model hyperparameters
 load_model = False
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 input_size_encoder = len(pseudo_voc) # +5 # TODO +5 is a hack. +5 because in dataloader stoi it is indexed with +5
 input_size_decoder = len(code_voc) # +5
 output_size = len(code_voc) # +5
-encoder_embedding_size = 50 # 300
-decoder_embedding_size = 50 # 300
-hidden_size = 100 #1024  # Needs to be the same for both RNN's
+encoder_embedding_size = 300
+decoder_embedding_size = 300
+hidden_size = 1024  # Needs to be the same for both RNN's
 num_layers = 1 # 2
 enc_dropout = 0.5
 dec_dropout = 0.5
@@ -118,16 +118,35 @@ for epoch in range(num_epochs):
 
     torch.save(checkpoint, f'./checkpoints/lstm_seq2seq/{epoch}.tar') #TODO Change path
 
-    # model.eval()
+    model.eval()
 
-    # translated_sentence = translate_sentence(
-    #     model, sentence, german, english, device, max_length=50
-    # )
+    test_pseudo = "set l to a"
+    test_to_indices = [pseudo_voc.stoi[token] for token in test_pseudo.split()] 
+    sentence_tensor = torch.LongTensor(test_to_indices).unsqueeze(1).to(device)
+    with torch.no_grad():
+        hidden, cell = model.encoder(sentence_tensor)
 
-    # print(f"Translated example sentence: \n {translated_sentence}")
+    outputs = [pseudo_voc.stoi["[START]"]]
+    stop_condition = False
+    while not stop_condition:
+        previous_word = torch.LongTensor([outputs[-1]]).to(device)
+
+        with torch.no_grad():
+            output, hidden, cell = model.decoder(previous_word, hidden, cell)
+            best_guess = output.argmax(1).item()
+
+        outputs.append(best_guess)
+
+        # Model predicts it's the end of the sentence
+        if output.argmax(1).item() == code_voc.stoi["[STOP]"] or len(outputs) > 50:
+            break
+
+    code_test = [code_voc.itos[index] for index in outputs]
+    print(f"Translated example sentence: \n {code_test}")
+    print('\n\n\n')
+
 
     model.train()
-
 
     # Training 
     for batch_idx, batch in enumerate(tqdm(train_loader, unit='batch')):
