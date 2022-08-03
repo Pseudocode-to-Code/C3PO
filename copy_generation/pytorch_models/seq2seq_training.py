@@ -5,6 +5,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 import pickle
 from tqdm import tqdm
+import time
 
 from vanilla_seq2seq import *
 from attention_seq2seq import *
@@ -13,6 +14,7 @@ from dataloader import *
 parser = argparse.ArgumentParser(description="Seq2Seq Training")
 parser.add_argument('--attention', '-a', default=False, action="store_true", help='Train Attention model')
 parser.add_argument('--non-copy', '-n', default=False, action='store_true', help='Train on non-copy dataset')
+parser.add_argument('--resume', '-r', default = 0)
 args = parser.parse_args()
 
 if args.attention:
@@ -30,8 +32,8 @@ else:
 # Training hyperparameters
 num_epochs = 100
 learning_rate = 0.001
-batch_size = 64
-
+#batch_size = 64
+batch_size = 32
 
 # f = open('../../data/CPY_dataset.pkl', 'rb')
 # data = pickle.load(f)
@@ -58,15 +60,16 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 input_size_encoder = len(pseudo_voc) # +5 # TODO +5 is a hack. +5 because in dataloader stoi it is indexed with +5
 input_size_decoder = len(code_voc) # +5
 output_size = len(code_voc) # +5
-encoder_embedding_size = 300
-decoder_embedding_size = 300
-hidden_size = 1024  # Needs to be the same for both RNN's
+encoder_embedding_size = 100 #300
+decoder_embedding_size = 100 #300
+hidden_size = 256 #1024  # Needs to be the same for both RNN's
 num_layers = 1 # 2
 enc_dropout = 0.5
 dec_dropout = 0.5
 
 print('Pseudo Vocab', input_size_encoder)
 print('Code Voc', input_size_decoder)
+print('Device', device)
 
 # print('Pseudo Vocab', pseudo_voc.itos)
 # print('\n\n\n')
@@ -82,10 +85,10 @@ for key in code_voc.itos:
 
 print('PASSED')
 
-writer = SummaryWriter(f"runs/loss_plot")
+writer = SummaryWriter(f"runs/attention_s2s_copy")
 step = 0
 
-train_dataset = TrainDataset(data, 'pseudo_gen_seq', 'code_gen_seq_aug')
+train_dataset = TrainDataset(data, 'pseudo_gen_seq', 'code_gen_seq_aug') # Change this for non-copy
 
 train_loader = get_train_loader(train_dataset, batch_size)
 
@@ -108,45 +111,64 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 pad_idx = code_voc.stoi["[PAD]"]
 criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
+# Loading checkpoint
+if args.resume:
+    start_epoch = args.resume
 
-for epoch in range(num_epochs):
-    print(f"[Epoch {epoch} / {num_epochs}]")
+    print(f'Loading checkpoint: attention_s2s_copy/{args.resume}.tar')
+    resume_checkpoint = torch.load(f'./checkpoints/attention_s2s_copy/{args.resume}.tar')
+    model.load_state_dict(resume_checkpoint['state_dict'])
+    optimizer.load_state_dict(resume_checkpoint['optimizer'])
+    step = resume_checkpoint['global_step']
+    start_epoch = resume_checkpoint['epoch']
+
+    print('Starting from step', step)
+else:
+    start_epoch = 0
+
+
+# Main Training loop
+for epoch in range(start_epoch, num_epochs):
+    print(f"\n\n[Epoch {epoch} / {num_epochs}] : {time.strftime('%Y-%m-%d %H:%M')} ")
 
     checkpoint = {"state_dict": model.state_dict(), 
-                  "optimizer": optimizer.state_dict()
+                  "optimizer": optimizer.state_dict(),
+                  "global_step": step,
+                  "epoch": epoch
                 }
 
-    torch.save(checkpoint, f'./checkpoints/lstm_seq2seq/{epoch}.tar') #TODO Change path
+    torch.save(checkpoint, f'./checkpoints/attention_s2s_copy/{epoch}.tar')
 
     model.eval()
 
-    test_pseudo = "set l to a"
-    test_to_indices = [pseudo_voc.stoi[token] for token in test_pseudo.split()] 
-    sentence_tensor = torch.LongTensor(test_to_indices).unsqueeze(1).to(device)
-    with torch.no_grad():
-        hidden, cell = model.encoder(sentence_tensor)
+    #test_pseudo = "set [CPY] to [CPY]"
+    #test_to_indices = [pseudo_voc.stoi[token] for token in test_pseudo.split()] 
+    #sentence_tensor = torch.LongTensor(test_to_indices).unsqueeze(1).to(device)
+    #with torch.no_grad():
+    #    hidden, cell = model.encoder(sentence_tensor)
 
-    outputs = [pseudo_voc.stoi["[START]"]]
-    stop_condition = False
-    while not stop_condition:
-        previous_word = torch.LongTensor([outputs[-1]]).to(device)
+    #outputs = [pseudo_voc.stoi["[START]"]]
+    #stop_condition = False
+    #while not stop_condition:
+    #    previous_word = torch.LongTensor([outputs[-1]]).to(device)
 
-        with torch.no_grad():
-            output, hidden, cell = model.decoder(previous_word, hidden, cell)
-            best_guess = output.argmax(1).item()
+    #   with torch.no_grad():
+    #        output, hidden, cell = model.decoder(previous_word, hidden, cell)
+    #        best_guess = output.argmax(1).item()
 
-        outputs.append(best_guess)
+    #    outputs.append(best_guess)
 
         # Model predicts it's the end of the sentence
-        if output.argmax(1).item() == code_voc.stoi["[STOP]"] or len(outputs) > 50:
-            break
+    #    if output.argmax(1).item() == code_voc.stoi["[STOP]"] or len(outputs) > 50:
+    #        break
 
-    code_test = [code_voc.itos[index] for index in outputs]
-    print(f"Translated example sentence: \n {code_test}")
-    print('\n\n\n')
+    #code_test = [code_voc.itos[index] for index in outputs]
+    #print(f"Translated example sentence: \n {code_test}")
+    #print('\n\n\n')
 
-
+    
     model.train()
+    running_loss = 0.0
 
     # Training 
     for batch_idx, batch in enumerate(tqdm(train_loader, unit='batch')):
@@ -178,6 +200,8 @@ for epoch in range(num_epochs):
 
         optimizer.zero_grad()
         loss = criterion(output, target)
+        
+        running_loss += loss.item()
 
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1) # Clip to avoid exploding gradient issues
@@ -187,3 +211,8 @@ for epoch in range(num_epochs):
         writer.add_scalar("Training loss", loss, global_step=step)
         step += 1
 
+    writer.add_scalar("Epoch loss", running_loss/len(train_loader), global_step = epoch) 
+    running_loss = 0.0
+
+
+torch.save(model.state_dict(), './checkpoints/attention_s2s_copy/attention_model.pth')
