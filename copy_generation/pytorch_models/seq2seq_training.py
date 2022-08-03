@@ -14,7 +14,7 @@ from dataloader import *
 parser = argparse.ArgumentParser(description="Seq2Seq Training")
 parser.add_argument('--attention', '-a', default=False, action="store_true", help='Train Attention model')
 parser.add_argument('--non-copy', '-n', default=False, action='store_true', help='Train on non-copy dataset')
-parser.add_argument('--resume', '-r', default = 0)
+parser.add_argument('--resume', '-r', default = 0, help='Training resumption. Pass the epoch number from which to resume')
 args = parser.parse_args()
 
 if args.attention:
@@ -57,9 +57,9 @@ else:
 # Model hyperparameters
 load_model = False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-input_size_encoder = len(pseudo_voc) # +5 # TODO +5 is a hack. +5 because in dataloader stoi it is indexed with +5
-input_size_decoder = len(code_voc) # +5
-output_size = len(code_voc) # +5
+input_size_encoder = len(pseudo_voc) 
+input_size_decoder = len(code_voc)
+output_size = len(code_voc)
 encoder_embedding_size = 100 #300
 decoder_embedding_size = 100 #300
 hidden_size = 256 #1024  # Needs to be the same for both RNN's
@@ -88,7 +88,10 @@ print('PASSED')
 writer = SummaryWriter(f"runs/attention_s2s_copy")
 step = 0
 
-train_dataset = TrainDataset(data, 'pseudo_gen_seq', 'code_gen_seq_aug') # Change this for non-copy
+if args.non_copy:
+    train_dataset = TrainDataset(data, 'pseudo_token', 'code_token_aug')
+else:
+    train_dataset = TrainDataset(data, 'pseudo_gen_seq', 'code_gen_seq_aug') 
 
 train_loader = get_train_loader(train_dataset, batch_size)
 
