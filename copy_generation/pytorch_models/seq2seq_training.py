@@ -17,16 +17,20 @@ parser.add_argument('--non-copy', '-n', default=False, action='store_true', help
 parser.add_argument('--resume', '-r', default = 0, help='Training resumption. Pass the epoch number from which to resume')
 args = parser.parse_args()
 
+model_type = ''
+
 if args.attention:
     print('Activating Attention Models')
     Encoder = AttnEncoder
     Decoder = AttnDecoder
     S2SModel = AttnSeq2Seq
+    model_type += 'attention_s2s'
 else:
     print('Activating Vanilla Models')
     Encoder = S2SEncoder
     Decoder = S2SDecoder
     S2SModel = VanillaSeq2Seq
+    model_type += 'vanilla_s2s'
 
 
 # Training hyperparameters
@@ -45,8 +49,11 @@ data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
 pseudo_voc = Vocabulary()
 if args.non_copy:
     pseudo_voc.build_vocabulary(data, 'pseudo_token')
+    model_type += '_noncopy'
 else:
     pseudo_voc.build_vocabulary(data, 'pseudo_gen_seq')
+    model_type += '_copy'
+    
 
 code_voc = Vocabulary()
 if args.non_copy:
@@ -85,7 +92,7 @@ for key in code_voc.itos:
 
 print('PASSED')
 
-writer = SummaryWriter(f"runs/attention_s2s_noncopy") # CHANGE BASED ON CASE
+writer = SummaryWriter(f"runs/{model_type}") # CHANGE BASED ON CASE
 step = 0
 
 if args.non_copy:
@@ -118,8 +125,8 @@ criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
 if args.resume:
     start_epoch = args.resume
 
-    print(f'Loading checkpoint: attention_s2s_noncopy/{args.resume}.tar')
-    resume_checkpoint = torch.load(f'./checkpoints/attention_s2s_noncopy/{args.resume}.tar') # CHANGE BASED ON CASE
+    print(f'Loading checkpoint: {model_type}/{args.resume}.tar')
+    resume_checkpoint = torch.load(f'./checkpoints/{model_type}/{args.resume}.tar') # CHANGE BASED ON CASE
     model.load_state_dict(resume_checkpoint['state_dict'])
     optimizer.load_state_dict(resume_checkpoint['optimizer'])
     step = resume_checkpoint['global_step']
@@ -140,7 +147,10 @@ for epoch in range(start_epoch, num_epochs):
                   "epoch": epoch
                 }
 
-    torch.save(checkpoint, f'./checkpoints/attention_s2s_noncopy/{epoch}.tar') # CHANGE BASED ON CASE
+    if not os.path.exists(f'./checkpoints/{model_type}'):
+        os.makedirs(f'./checkpoints/{model_type}')
+
+    torch.save(checkpoint, f'./checkpoints/{model_type}/{epoch}.tar') # CHANGE BASED ON CASE
 
     model.eval()
 
@@ -218,4 +228,4 @@ for epoch in range(start_epoch, num_epochs):
     running_loss = 0.0
 
 
-torch.save(model.state_dict(), './checkpoints/attention_s2s_noncopy/attention_model.pth') #CHANGE BASED ON CASE
+torch.save(model.state_dict(), './checkpoints/{model_type}/attention_model.pth') #CHANGE BASED ON CASE
