@@ -85,7 +85,7 @@ for key in code_voc.itos:
 
 print('PASSED')
 
-writer = SummaryWriter(f"runs/attention_s2s_copy")
+writer = SummaryWriter(f"runs/attention_s2s_noncopy") # CHANGE BASED ON CASE
 step = 0
 
 if args.non_copy:
@@ -118,8 +118,8 @@ criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
 if args.resume:
     start_epoch = args.resume
 
-    print(f'Loading checkpoint: attention_s2s_copy/{args.resume}.tar')
-    resume_checkpoint = torch.load(f'./checkpoints/attention_s2s_copy/{args.resume}.tar')
+    print(f'Loading checkpoint: attention_s2s_noncopy/{args.resume}.tar')
+    resume_checkpoint = torch.load(f'./checkpoints/attention_s2s_noncopy/{args.resume}.tar') # CHANGE BASED ON CASE
     model.load_state_dict(resume_checkpoint['state_dict'])
     optimizer.load_state_dict(resume_checkpoint['optimizer'])
     step = resume_checkpoint['global_step']
@@ -140,7 +140,7 @@ for epoch in range(start_epoch, num_epochs):
                   "epoch": epoch
                 }
 
-    torch.save(checkpoint, f'./checkpoints/attention_s2s_copy/{epoch}.tar')
+    torch.save(checkpoint, f'./checkpoints/attention_s2s_noncopy/{epoch}.tar') # CHANGE BASED ON CASE
 
     model.eval()
 
@@ -218,4 +218,4 @@ for epoch in range(start_epoch, num_epochs):
     running_loss = 0.0
 
 
-torch.save(model.state_dict(), './checkpoints/attention_s2s_copy/attention_model.pth')
+torch.save(model.state_dict(), './checkpoints/attention_s2s_noncopy/attention_model.pth') #CHANGE BASED ON CASE
