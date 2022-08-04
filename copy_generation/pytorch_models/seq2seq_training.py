@@ -33,13 +33,6 @@ else:
     S2SModel = VanillaSeq2Seq
     model_type += 'vanilla_s2s'
 
-
-# Training hyperparameters
-num_epochs = 100
-learning_rate = 0.001
-#batch_size = 64
-batch_size = 32
-
 # f = open('../../data/CPY_dataset.pkl', 'rb')
 # data = pickle.load(f)
 # f.close()
@@ -68,9 +61,23 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 input_size_encoder = len(pseudo_voc) 
 input_size_decoder = len(code_voc)
 output_size = len(code_voc)
-encoder_embedding_size = 100 #300
-decoder_embedding_size = 100 #300
-hidden_size = 256 #1024  # Needs to be the same for both RNN's
+
+
+# Training hyperparameters
+num_epochs = 100
+learning_rate = 0.001
+
+if args.attention:
+    batch_size = 32
+    encoder_embedding_size = 100 
+    decoder_embedding_size = 100 
+    hidden_size = 256
+else:
+    batch_size = 64
+    encoder_embedding_size = 300
+    decoder_embedding_size = 300
+    hidden_size = 1024  
+
 num_layers = 1 # 2
 enc_dropout = 0.5
 dec_dropout = 0.5
@@ -78,6 +85,8 @@ dec_dropout = 0.5
 print('Pseudo Vocab', input_size_encoder)
 print('Code Voc', input_size_decoder)
 print('Device', device)
+
+print('Hyperparams', batch_size, encoder_embedding_size, decoder_embedding_size , hidden_size)
 
 # print('Pseudo Vocab', pseudo_voc.itos)
 # print('\n\n\n')
@@ -100,6 +109,8 @@ if args.non_copy:
     train_dataset = TrainDataset(data, 'pseudo_token', 'code_token_aug')
 else:
     train_dataset = TrainDataset(data, 'pseudo_gen_seq', 'code_gen_seq_aug') 
+
+print(len(train_dataset.source_vocab.stoi))
 
 train_loader = get_train_loader(train_dataset, batch_size)
 
@@ -229,4 +240,4 @@ for epoch in range(start_epoch, num_epochs):
     running_loss = 0.0
 
 
-torch.save(model.state_dict(), './checkpoints/{model_type}/attention_model.pth') #CHANGE BASED ON CASE
+torch.save(model.state_dict(), f'./checkpoints/{model_type}/attention_model.pth') #CHANGE BASED ON CASE
