@@ -42,10 +42,10 @@ MAXLEN = 74 # Got from experimentation.ipynb
 eval_data = pd.read_pickle('../../data/CPY_dataset_eval_tree_copy.pkl')
 train_data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
 
-pseudo_full_voc_train = Vocabulary()
-pseudo_copy_voc_train = Vocabulary()
-pseudo_full_voc_eval = Vocabulary()
-pseudo_copy_voc_eval = Vocabulary()
+pseudo_full_voc_train = Vocabulary('train pseudocode')
+pseudo_copy_voc_train = Vocabulary('train pseudo with cpy')
+pseudo_full_voc_eval = Vocabulary('eval pseudocode')
+pseudo_copy_voc_eval = Vocabulary('eval pseudo with cpy')
 
 pseudo_full_voc_train.build_vocabulary(train_data, 'pseudo_token')
 pseudo_copy_voc_train.build_vocabulary(train_data, 'pseudo_gen_seq')
@@ -63,7 +63,7 @@ else:
     model_type += '_copy'
     
 
-code_voc = Vocabulary()
+code_voc = Vocabulary('code')
 if args.non_copy:
     code_voc.build_vocabulary(train_data, 'code_token_aug')
     # code_voc.build_vocabulary(train_data, 'truth_code_token_aug')
