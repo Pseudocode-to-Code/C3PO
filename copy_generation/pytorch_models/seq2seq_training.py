@@ -40,7 +40,7 @@ else:
 
 data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
 
-pseudo_voc = Vocabulary()
+pseudo_voc = Vocabulary('pseudocode')
 if args.non_copy:
     pseudo_voc.build_vocabulary(data, 'pseudo_token')
     model_type += '_noncopy'
@@ -49,7 +49,7 @@ else:
     model_type += '_copy'
     
 
-code_voc = Vocabulary()
+code_voc = Vocabulary('code')
 if args.non_copy:
     code_voc.build_vocabulary(data, 'code_token_aug')
 else:
@@ -86,18 +86,18 @@ print('Pseudo Vocab', input_size_encoder)
 print('Code Voc', input_size_decoder)
 print('Device', device)
 
-print('Hyperparams', batch_size, encoder_embedding_size, decoder_embedding_size , hidden_size)
+print('Hyperparams', batch_size, encoder_embedding_size, decoder_embedding_size, hidden_size)
 
 # print('Pseudo Vocab', pseudo_voc.itos)
 # print('\n\n\n')
 # print('Code Vocab', code_voc.itos)
 
-for key in pseudo_voc.itos:
-    if pseudo_voc.stoi[pseudo_voc.itos[key]] != key:
+for key, value in pseudo_voc.itos.items():
+    if pseudo_voc.stoi[value] != key:
         print('ERROR')
 
-for key in code_voc.itos:
-    if code_voc.stoi[code_voc.itos[key]] != key:
+for key, value in code_voc.itos.values():
+    if code_voc.stoi[value] != key:
         print('ERROR')
 
 print('PASSED')
@@ -115,7 +115,11 @@ print(len(train_dataset.source_vocab.stoi))
 train_loader = get_train_loader(train_dataset, batch_size)
 
 encoder_net = Encoder(
-    input_size_encoder, encoder_embedding_size, hidden_size, num_layers, enc_dropout
+    input_size_encoder, 
+    encoder_embedding_size, 
+    hidden_size, 
+    num_layers, 
+    enc_dropout
 ).to(device)
 
 decoder_net = Decoder(
@@ -130,7 +134,7 @@ decoder_net = Decoder(
 model = S2SModel(encoder_net, decoder_net, device).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-pad_idx = code_voc.stoi["[PAD]"]
+pad_idx = code_voc.stoi[PAD_TOKEN]
 criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
 # Loading checkpoint
