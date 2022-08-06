@@ -42,24 +42,24 @@ MAXLEN = 74 # Got from experimentation.ipynb
 eval_data = pd.read_pickle('../../data/CPY_dataset_eval_tree_copy.pkl')
 train_data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
 
-pseudo_full_voc = Vocabulary()
-pseudo_copy_voc = Vocabulary()
+pseudo_full_voc_train = Vocabulary()
+pseudo_copy_voc_train = Vocabulary()
 pseudo_full_voc_eval = Vocabulary()
 pseudo_copy_voc_eval = Vocabulary()
 
-pseudo_full_voc.build_vocabulary(train_data, 'pseudo_token')
-pseudo_copy_voc.build_vocabulary(train_data, 'pseudo_gen_seq')
+pseudo_full_voc_train.build_vocabulary(train_data, 'pseudo_token')
+pseudo_copy_voc_train.build_vocabulary(train_data, 'pseudo_gen_seq')
 
 pseudo_full_voc_eval.build_vocabulary(eval_data, 'pseudo_token')
 pseudo_copy_voc_eval.build_vocabulary(eval_data, 'pseudo_gen_seq')
 
 if args.non_copy:
     # pseudo_voc.build_vocabulary(data, 'pseudo_token')
-    pseudo_voc_size = len(pseudo_full_voc)
+    pseudo_voc_size = len(pseudo_full_voc_train)
     model_type += '_noncopy'
 else:
     # pseudo_voc.build_vocabulary(data, 'pseudo_gen_seq')
-    pseudo_voc_size = len(pseudo_copy_voc)
+    pseudo_voc_size = len(pseudo_copy_voc_train)
     model_type += '_copy'
     
 
@@ -115,9 +115,9 @@ print('Hyperparams', encoder_embedding_size, decoder_embedding_size , hidden_siz
 step = 0
 
 if args.non_copy:
-    test_dataset = TestDataset(eval_data, 'pseudo_token', pseudo_full_voc)
+    test_dataset = TestDataset(eval_data, 'pseudo_token', pseudo_full_voc_train)
 else:
-    test_dataset = TestDataset(eval_data, 'pseudo_gen_seq', pseudo_copy_voc) 
+    test_dataset = TestDataset(eval_data, 'pseudo_gen_seq', pseudo_copy_voc_train) 
 
 print(len(test_dataset.source_vocab.stoi))
 
@@ -144,45 +144,98 @@ criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
 # Loading checkpoint
 print(f'Loading checkpoint: {model_type}/99.tar')
-resume_checkpoint = torch.load(f'./checkpoints/{model_type}/99.tar') # CHANGE BASED ON CASE
+resume_checkpoint = torch.load(f'./checkpoints/{model_type}/99.tar', map_location=device) # CHANGE BASED ON CASE
 model.load_state_dict(resume_checkpoint['state_dict'])
 
 model.eval()
 
-for batch_idx, batch in enumerate(tqdm(test_loader, unit='batch')):
-    print(batch)
-#     inp_data = batch.to(dtype=torch.int64, device=device)
+# final_seqs = []
 
-#     with torch.no_grad():
-#         hidden, cell = model.encoder(inp_data)
+for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
+    inp_data = batch.permute(1,0).to(dtype=torch.int64, device=device) # Permute because model expects 1 column with all words indexes
 
-#     outputs = [pseudo_voc.stoi["[START]"]]
-#     stop_condition = False
-#     while not stop_condition:
-#         previous_word = torch.LongTensor([outputs[-1]]).to(device)
+    # TODO replace UNK tags if any with CPY tags
+    unks = torch.where(inp_data == pseudo_copy_voc_train.stoi['[UNK]'])[0]
+    if len(unks) > 0:
+        inp_data[unks] = pseudo_copy_voc_train.stoi['[CPY]']
+    
 
-#         with torch.no_grad():
-#             output, hidden, cell = model.decoder(previous_word, hidden, cell)
-#             best_guess = output.argmax(1).item()
+    with torch.no_grad():
+        hidden, cell = model.encoder(inp_data)
 
-#         outputs.append(best_guess)
+    outputs = [code_voc.stoi["[START]"]] # Outputs including combine
+    gen_seq = [code_voc.stoi["[START]"]] # Pure gen seq without combine, used for feeding previous word
 
-#         # Model predicts it's the end of the sentence
-#         if output.argmax(1).item() == code_voc.stoi["[STOP]"] or len(outputs) > 50:
-#             break
+    stop_condition = False
 
-#     code_test = [code_voc.itos[index] for index in outputs]
+    copy_seq = eval_data['dt_copy_seq'][batch_idx]
+    actual_pseudo = eval_data['pseudo_token'][batch_idx]
+    # print(copy_seq, actual_pseudo)
+    # print(actual_pseudo)
+
+    cpy_indexes = np.where(copy_seq == 1)[0]
+    # print(cpy_indexes)
+    cpy_cnt = 0
+
+    for _ in range(MAXLEN):
+        previous_word = torch.LongTensor([gen_seq[-1]]).to(device)
+
+        with torch.no_grad():
+            output, hidden, cell = model.decoder(previous_word, hidden, cell)
+            best_guess = output.argmax(1).item()
+
+        if best_guess == code_voc.stoi['[CPY]']: #CPY tag generated
+            if cpy_cnt < len(cpy_indexes): # If CPYs present in pseudo (Less than that generated)
+                index = cpy_indexes[cpy_cnt] # index in pseudo string
+                pseudo_token = actual_pseudo[index] 
+
+                token_index = pseudo_full_voc_eval.stoi[pseudo_token] 
+                outputs.append(-token_index)
+
+                cpy_cnt += 1
+            
+            else: # If more CPY tags generated do not add anything
+                pass
+        else:
+            outputs.append(best_guess)
+
+        gen_seq.append(best_guess)
+
+        # Model predicts it's the end of the sentence
+        # if output.argmax(1).item() == code_voc.stoi["[STOP]"] or len(outputs) > 50:
+        if output.argmax(1).item() == code_voc.stoi["[STOP]"]:
+            break
+
+    code_test = [code_voc.itos[index] for index in gen_seq]
+
+    ### Convert to string
+    string_outputs = []
+
+    for token in outputs:
+        if token >= 0:
+            string_outputs.append(code_voc.itos[token])
+        else:
+            string_outputs.append(pseudo_full_voc_eval.itos[-token])
+
+    # final_seqs.append(string_outputs)
+    
+    # print('Pseudo', actual_pseudo)
+    # print('Pseudo copy', eval_data['pseudo_gen_seq'][batch_idx])
+    # print('Output copy', code_test)
+    # print('Outputs', string_outputs)
+    # print()
 
 
-
-# test_pseudo = "set l to m"
+# # test_pseudo = "set l to m"
 # # test_pseudo = "input [CPY] and [CPY]"
-# test_to_indices = [pseudo_voc.stoi[token] for token in test_pseudo.split()] 
+# test_pseudo = "[CPY]"
+# test_to_indices = [pseudo_copy_voc_train.stoi[token] for token in test_pseudo.split()] 
 # sentence_tensor = torch.LongTensor(test_to_indices).unsqueeze(1).to(device)
+# print(sentence_tensor.size())
 # with torch.no_grad():
 #     hidden, cell = model.encoder(sentence_tensor)
 
-# outputs = [pseudo_voc.stoi["[START]"]]
+# outputs = [code_voc.stoi["[START]"]]
 # stop_condition = False
 # while not stop_condition:
 #     previous_word = torch.LongTensor([outputs[-1]]).to(device)

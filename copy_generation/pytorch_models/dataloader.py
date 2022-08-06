@@ -78,6 +78,9 @@ class TrainDataset(Dataset):
 class TestDataset(Dataset):
 
     def __init__(self, df, src_col, src_vocab):
+        """
+            src_vocab is training pseudo vocab that will be used for numericalizing because the model was trained on those indexes
+        """
         self.df = df 
         self.src_col = src_col
 
@@ -120,25 +123,6 @@ class MyCollate:
         return source, target
 
 
-class TestCollate:
-    def __init__(self, pad_idx):
-        self.pad_idx = pad_idx
-        
-    
-    #__call__: a default method
-    ##   First the obj is created using MyCollate(pad_idx) in data loader
-    ##   Then if obj(batch) is called -> __call__ runs by default
-    def __call__(self, batch):
-        #get all source indexed sentences of the batch
-        source = [item[0] for item in batch] 
-        #pad source sentences to max source length in the batch
-        source = pad_sequence(source, batch_first=False, padding_value = self.pad_idx) 
-
-        # TODO Consider adding pack_pad_sequence to save computations
-
-        return source
-
-
 
 def get_train_loader(dataset, batch_size, num_workers=0, shuffle=True, pin_memory=True): #increase num_workers according to CPU
     #get pad_idx for collate fn
@@ -156,7 +140,7 @@ def get_test_loader(dataset, batch_size=1, num_workers=0, shuffle=False, pin_mem
     #define loader
     loader = DataLoader(dataset, batch_size = batch_size, num_workers = num_workers,
                         shuffle=shuffle,
-                       pin_memory=pin_memory, collate_fn = TestCollate(pad_idx=pad_idx)) #MyCollate class runs __call__ method by default
+                       pin_memory=pin_memory) #MyCollate class runs __call__ method by default
     return loader
 
 
