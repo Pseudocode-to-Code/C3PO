@@ -149,7 +149,8 @@ model.load_state_dict(resume_checkpoint['state_dict'])
 
 model.eval()
 
-# final_seqs = []
+final_seqs = []
+code_gen_seqs = []
 
 for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
     inp_data = batch.permute(1,0).to(dtype=torch.int64, device=device) # Permute because model expects 1 column with all words indexes
@@ -161,7 +162,10 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
     
 
     with torch.no_grad():
-        hidden, cell = model.encoder(inp_data)
+        if args.attention:
+            encoder_states, hidden, cell = model.encoder(inp_data)
+        else:
+            hidden, cell = model.encoder(inp_data)
 
     outputs = [code_voc.stoi["[START]"]] # Outputs including combine
     gen_seq = [code_voc.stoi["[START]"]] # Pure gen seq without combine, used for feeding previous word
@@ -181,7 +185,11 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
         previous_word = torch.LongTensor([gen_seq[-1]]).to(device)
 
         with torch.no_grad():
-            output, hidden, cell = model.decoder(previous_word, hidden, cell)
+            if args.attention:
+                output, hidden, cell = model.decoder(previous_word, encoder_states, hidden, cell)
+            else:
+                output, hidden, cell = model.decoder(previous_word, hidden, cell)
+
             best_guess = output.argmax(1).item()
 
         if best_guess == code_voc.stoi['[CPY]']: #CPY tag generated
@@ -206,7 +214,7 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
         if output.argmax(1).item() == code_voc.stoi["[STOP]"]:
             break
 
-    code_test = [code_voc.itos[index] for index in gen_seq]
+    gen_seq_conv = [code_voc.itos[index] for index in gen_seq]
 
     ### Convert to string
     string_outputs = []
@@ -217,8 +225,16 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
         else:
             string_outputs.append(pseudo_full_voc_eval.itos[-token])
 
-    # final_seqs.append(string_outputs)
-    
+    final_seqs.append(string_outputs[1:-1])
+    code_gen_seqs.append(gen_seq_conv[1:-1])
+
+
+eval_data['code_gen_seq'] = code_gen_seqs
+eval_data['final_code'] = final_seqs
+
+
+pd.to_pickle(eval_data, f'./preds/{model_type}.pkl')
+
     # print('Pseudo', actual_pseudo)
     # print('Pseudo copy', eval_data['pseudo_gen_seq'][batch_idx])
     # print('Output copy', code_test)
