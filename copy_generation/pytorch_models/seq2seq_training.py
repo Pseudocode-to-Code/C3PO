@@ -96,7 +96,7 @@ for key, value in pseudo_voc.itos.items():
     if pseudo_voc.stoi[value] != key:
         print('ERROR')
 
-for key, value in code_voc.itos.values():
+for key, value in code_voc.itos.items():
     if code_voc.stoi[value] != key:
         print('ERROR')
 
