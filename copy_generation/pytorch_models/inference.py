@@ -147,6 +147,11 @@ print(f'Loading checkpoint: {model_type}/99.tar')
 resume_checkpoint = torch.load(f'./checkpoints/{model_type}/99.tar', map_location=device) # CHANGE BASED ON CASE
 model.load_state_dict(resume_checkpoint['state_dict'])
 
+if args.non_copy:
+    pseudo_voc = pseudo_full_voc_train
+else:
+    pseudo_voc = pseudo_copy_voc_train
+
 model.eval()
 
 final_seqs = []
@@ -156,9 +161,13 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
     inp_data = batch.permute(1,0).to(dtype=torch.int64, device=device) # Permute because model expects 1 column with all words indexes
 
     # TODO replace UNK tags if any with CPY tags
-    unks = torch.where(inp_data == pseudo_copy_voc_train.stoi['[UNK]'])[0]
+    # unks = torch.where(inp_data == pseudo_copy_voc_train.stoi['[UNK]'])[0]
+    # if len(unks) > 0:
+    #     inp_data[unks] = pseudo_copy_voc_train.stoi['[CPY]']
+
+    unks = torch.where(inp_data == pseudo_voc.stoi['[UNK]'])[0]
     if len(unks) > 0:
-        inp_data[unks] = pseudo_copy_voc_train.stoi['[CPY]']
+        inp_data[unks] = pseudo_voc.stoi['[CPY]']
     
 
     with torch.no_grad():
@@ -192,18 +201,23 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
 
             best_guess = output.argmax(1).item()
 
-        if best_guess == code_voc.stoi['[CPY]']: #CPY tag generated
-            if cpy_cnt < len(cpy_indexes): # If CPYs present in pseudo (Less than that generated)
-                index = cpy_indexes[cpy_cnt] # index in pseudo string
-                pseudo_token = actual_pseudo[index] 
+        
+        if not args.non_copy:
+            if best_guess == code_voc.stoi['[CPY]']: #CPY tag generated
+                if cpy_cnt < len(cpy_indexes): # If CPYs present in pseudo (Less than that generated)
+                    index = cpy_indexes[cpy_cnt] # index in pseudo string
+                    pseudo_token = actual_pseudo[index] 
 
-                token_index = pseudo_full_voc_eval.stoi[pseudo_token] 
-                outputs.append(-token_index)
+                    token_index = pseudo_full_voc_eval.stoi[pseudo_token] 
+                    outputs.append(-token_index)
 
-                cpy_cnt += 1
-            
-            else: # If more CPY tags generated do not add anything
-                pass
+                    cpy_cnt += 1
+                
+                else: # If more CPY tags generated do not add anything
+                    pass
+            else:
+                outputs.append(best_guess)
+
         else:
             outputs.append(best_guess)
 
@@ -216,14 +230,18 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
 
     gen_seq_conv = [code_voc.itos[index] for index in gen_seq]
 
-    ### Convert to string
-    string_outputs = []
+    if args.non_copy:
+        string_outputs = gen_seq_conv
 
-    for token in outputs:
-        if token >= 0:
-            string_outputs.append(code_voc.itos[token])
-        else:
-            string_outputs.append(pseudo_full_voc_eval.itos[-token])
+    else:
+        ### Convert to string
+        string_outputs = []
+
+        for token in outputs:
+            if token >= 0:
+                string_outputs.append(code_voc.itos[token])
+            else:
+                string_outputs.append(pseudo_full_voc_eval.itos[-token])
 
     final_seqs.append(string_outputs[1:-1])
     code_gen_seqs.append(gen_seq_conv[1:-1])
