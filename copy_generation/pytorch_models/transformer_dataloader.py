@@ -202,7 +202,7 @@ class MyCollate:
         target = [item[1] for item in batch] 
         # Pad source sentences to max source length in the batch
         
-        print('Size', source[0].shape[0])
+        # print('Size', source[0].shape[0])
 
         max_source_len = max(source, key = lambda x: x.shape[0]).shape[0]
         max_target_len = max(target, key = lambda x: x.shape[0]).shape[0]

@@ -230,6 +230,7 @@ for epoch in range(start_epoch, num_epochs):
         optimizer.zero_grad()
         loss = criterion(output, target)
         
+        # Loss is averaged across batch (number of samples in batch)
         running_loss += loss.item()
 
         loss.backward()
@@ -240,6 +241,7 @@ for epoch in range(start_epoch, num_epochs):
         writer.add_scalar("Training loss", loss, global_step=step)
         step += 1
 
+    # Per sample loss - divide total batch average loss by number of batches
     writer.add_scalar("Epoch loss", running_loss/len(train_loader), global_step = epoch) 
     running_loss = 0.0
 

@@ -4,7 +4,7 @@ import os
 from xml.dom import ValidationErr
 import torch
 from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer, AdamW
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer, AdamW, T5ForConditionalGeneration
 from torch.utils.tensorboard import SummaryWriter
 import pandas as pd
 from transformer_dataloader import Vocabulary, TrainDataset, get_train_loader
@@ -17,7 +17,8 @@ args = parser.parse_args()
 model_type = 'transformer'
 
 # Read CPY dataset
-data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
+# data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
+data = pd.read_pickle('/Users/vibhamasti/Personal/College/Sem_6/NLP/Pseudocode_to_code/spoc/data/CPY_dataset_new.pkl')
 
 # Create pseudocode and code vocabularies
 pseudo_voc = Vocabulary('pseudocode')
@@ -67,7 +68,7 @@ step = 0
 # Use the t5-small pretrained transformer
 
 model_checkpoint = "t5-small"
-model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
+model = T5ForConditionalGeneration.from_pretrained(model_checkpoint)
 model.to(device)
 
 # model_name = model_checkpoint.split("/")[-1]
@@ -114,13 +115,18 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
 
         # Get input and targets and get to cuda
+
         inp_data = batch[0].to(dtype=torch.int64, device=device).permute(1,0)
         target = batch[1].to(dtype=torch.int64, device=device).permute(1,0)
 
-        print(inp_data.size())
-        print(target.size())
+        # print(inp_data.size())
+        # print(target.size())
 
-        outputs = model(inp_data, labels=target)
+        inp_data = batch[0].to(dtype=torch.int64, device=device).permute(1, 0)
+        target = batch[1].to(dtype=torch.int64, device=device).permute(1, 0).contiguous()
+
+        outputs = model(input_ids=inp_data, labels=target)
+
 
         loss = outputs[0]
         loss.backward()
