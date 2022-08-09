@@ -7,7 +7,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer, AdamW
 from torch.utils.tensorboard import SummaryWriter
 import pandas as pd
-from dataloader import Vocabulary, TrainDataset, get_train_loader
+from transformer_dataloader import Vocabulary, TrainDataset, get_train_loader
 
 parser = argparse.ArgumentParser(description="Transformer Training")
 parser.add_argument('--non-copy', '-n', default=False, action='store_true', help='Train on non-copy dataset')
@@ -46,7 +46,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Training hyperparameters
 num_epochs = 2
 learning_rate = 0.001
-batch_size = 128
+batch_size = 32
 weight_decay = 0.01
 save_total_limit = num_epochs
 
@@ -114,8 +114,11 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
 
         # Get input and targets and get to cuda
-        inp_data = batch[0].to(dtype=torch.int64, device=device)
-        target = batch[1].to(dtype=torch.int64, device=device)
+        inp_data = batch[0].to(dtype=torch.int64, device=device).permute(1,0)
+        target = batch[1].to(dtype=torch.int64, device=device).permute(1,0)
+
+        print(inp_data.size())
+        print(target.size())
 
         outputs = model(inp_data, labels=target)
 
