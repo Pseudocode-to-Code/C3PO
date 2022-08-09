@@ -17,8 +17,8 @@ args = parser.parse_args()
 model_type = 'transformer'
 
 # Read CPY dataset
-# data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
-data = pd.read_pickle('/Users/vibhamasti/Personal/College/Sem_6/NLP/Pseudocode_to_code/spoc/data/CPY_dataset_new.pkl')
+data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
+# data = pd.read_pickle('/Users/vibhamasti/Personal/College/Sem_6/NLP/Pseudocode_to_code/spoc/data/CPY_dataset_new.pkl')
 
 # Create pseudocode and code vocabularies
 pseudo_voc = Vocabulary('pseudocode')
