@@ -137,3 +137,5 @@ events*
 *.tar 
 *.pth 
 *.DS_Store
+
+t5-small/*

@@ -4,21 +4,21 @@ import os
 from xml.dom import ValidationErr
 import torch
 from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer, AdamW, T5ForConditionalGeneration
+from transformers import T5ForConditionalGeneration, T5Tokenizer
+from torch.nn import CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
 import pandas as pd
-from transformer_dataloader import Vocabulary, TrainDataset, get_train_loader
+from transformer_dataloader import Vocabulary, TrainDataset, get_train_loader, PAD_INDEX, RESERVED_TOKENS
 
 parser = argparse.ArgumentParser(description="Transformer Training")
 parser.add_argument('--non-copy', '-n', default=False, action='store_true', help='Train on non-copy dataset')
 parser.add_argument('--resume', '-r', default = 0, help='Training resumption. Pass the epoch number from which to resume')
 args = parser.parse_args()
 
-model_type = 'transformer'
+model_type = 'transformer_new_pad'
 
 # Read CPY dataset
-# data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
-data = pd.read_pickle('/Users/vibhamasti/Personal/College/Sem_6/NLP/Pseudocode_to_code/spoc/data/CPY_dataset_new.pkl')
+data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
 
 # Create pseudocode and code vocabularies
 pseudo_voc = Vocabulary('pseudocode')
@@ -28,13 +28,13 @@ target_col = ''
 
 if args.non_copy:
     source_col = 'pseudo_token'
-    target_col = 'code_token_aug'
+    target_col = 'code_token'
     pseudo_voc.build_vocabulary(data, source_col)
     code_voc.build_vocabulary(data, target_col)
     model_type += '_noncopy'
 else:
     source_col = 'pseudo_gen_seq'
-    target_col = 'code_gen_seq_aug'
+    target_col = 'code_gen_seq'
     pseudo_voc.build_vocabulary(data, source_col)
     code_voc.build_vocabulary(data, target_col)
     model_type += '_copy'
@@ -43,11 +43,12 @@ else:
 
 # Model hyperparameters
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cpu")
 
 # Training hyperparameters
-num_epochs = 2
-learning_rate = 0.001
-batch_size = 32
+num_epochs = 10
+learning_rate = 0.0001
+batch_size = 8
 weight_decay = 0.01
 save_total_limit = num_epochs
 
@@ -67,9 +68,17 @@ step = 0
 
 # Use the t5-small pretrained transformer
 
-model_checkpoint = "t5-small"
+model_checkpoint = "./t5-small"
 model = T5ForConditionalGeneration.from_pretrained(model_checkpoint)
+
+if not args.non_copy:
+    tokenizer = T5Tokenizer.from_pretrained('t5-small')
+    tokenizer.add_tokens(RESERVED_TOKENS)
+    model.resize_token_embeddings(len(tokenizer))
+
 model.to(device)
+
+
 
 # model_name = model_checkpoint.split("/")[-1]
 
@@ -105,6 +114,8 @@ for epoch in range(num_epochs):
                   "epoch": epoch
                 }
 
+    running_loss = 0.0 
+
     if not os.path.exists(f'./checkpoints/{model_type}'):
         os.makedirs(f'./checkpoints/{model_type}')
 
@@ -119,6 +130,8 @@ for epoch in range(num_epochs):
         inp_data = batch[0].to(dtype=torch.int64, device=device).permute(1,0)
         target = batch[1].to(dtype=torch.int64, device=device).permute(1,0)
 
+        # print(inp_data, target)
+
         # print(inp_data.size())
         # print(target.size())
 
@@ -127,8 +140,15 @@ for epoch in range(num_epochs):
 
         outputs = model(input_ids=inp_data, labels=target)
 
+        lm_logits = outputs[1]
 
-        loss = outputs[0]
+        loss_fct = CrossEntropyLoss(ignore_index=PAD_INDEX)
+        loss = loss_fct(lm_logits.view(-1, lm_logits.size(-1)), target.view(-1))
+
+
+        outputs = outputs
+        running_loss += loss.item()
+
         loss.backward()
         optimizer.step()
         
@@ -137,6 +157,9 @@ for epoch in range(num_epochs):
 
         if step % 100 == 0:
             print(f'Epoch: {epoch}, Step: {step}, Loss: {loss}')
+    
+    writer.add_scalar("Epoch loss", running_loss/len(train_loader), global_step = epoch)
+    running_loss = 0.0
 
 
 torch.save(model.state_dict(), f'./checkpoints/{model_type}/complete_model.pth') #CHANGE BASED ON CASE

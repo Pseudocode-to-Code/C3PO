@@ -15,7 +15,7 @@ from dataloader import *
 parser = argparse.ArgumentParser(description="Seq2Seq Training")
 parser.add_argument('--attention', '-a', default=False, action="store_true", help='Train Attention model')
 parser.add_argument('--non-copy', '-n', default=False, action='store_true', help='Train on non-copy dataset')
-parser.add_argument('--resume', '-r', default = 0, help='Training resumption. Pass the epoch number from which to resume')
+parser.add_argument('--checkpoint', '-c', default = 99, help='Training resumption. Pass the epoch number from which to resume')
 args = parser.parse_args()
 
 model_type = ''
@@ -143,8 +143,8 @@ pad_idx = code_voc.stoi["[PAD]"]
 criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
 # Loading checkpoint
-print(f'Loading checkpoint: {model_type}/99.tar')
-resume_checkpoint = torch.load(f'./checkpoints/{model_type}/99.tar', map_location=device) # CHANGE BASED ON CASE
+print(f'Loading checkpoint: {model_type}/{args.checkpoint}.tar')
+resume_checkpoint = torch.load(f'./checkpoints/{model_type}/{args.checkpoint}.tar', map_location=device) # CHANGE BASED ON CASE
 model.load_state_dict(resume_checkpoint['state_dict'])
 
 if args.non_copy:
@@ -251,7 +251,7 @@ eval_data['code_gen_seq'] = code_gen_seqs
 eval_data['final_code'] = final_seqs
 
 
-pd.to_pickle(eval_data, f'./preds/{model_type}.pkl')
+pd.to_pickle(eval_data, f'./preds/{model_type}_{args.checkpoint}.pkl')
 
     # print('Pseudo', actual_pseudo)
     # print('Pseudo copy', eval_data['pseudo_gen_seq'][batch_idx])

@@ -70,3 +70,4 @@ urllib3==1.26.6
 wcwidth==0.2.5
 wrapt==1.11.2
 zipp==3.7.0
+sentencepiece==0.1.97
