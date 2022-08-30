@@ -21,6 +21,7 @@ CPY_TOKEN = '[CPY]'
 UNKNOWN_TOKEN = '[UNK]'
 
 RESERVED_TOKENS = {PAD_TOKEN, START_TOKEN, STOP_TOKEN, CPY_TOKEN, UNKNOWN_TOKEN}
+NON_CPY_TOKENS = {PAD_TOKEN, START_TOKEN, STOP_TOKEN, UNKNOWN_TOKEN}
 class Vocabulary:
     """
         Representation of a vocabulary/language as several dictionaries

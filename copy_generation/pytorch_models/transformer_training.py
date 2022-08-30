@@ -8,7 +8,14 @@ from transformers import T5ForConditionalGeneration, T5Tokenizer
 from torch.utils.tensorboard import SummaryWriter
 from torch.nn import CrossEntropyLoss
 import pandas as pd
-from transformer_dataloader import Vocabulary, TrainDataset, get_train_loader, PAD_INDEX, RESERVED_TOKENS
+from transformer_dataloader import (
+    NON_CPY_TOKENS, 
+    PAD_INDEX, 
+    RESERVED_TOKENS,
+    Vocabulary, 
+    TrainDataset, 
+    get_train_loader
+)
 
 parser = argparse.ArgumentParser(description="Transformer Training")
 parser.add_argument('--non-copy', '-n', default=False, action='store_true', help='Train on non-copy dataset')
@@ -70,11 +77,18 @@ step = 0
 
 model_checkpoint = "./t5-small"
 model = T5ForConditionalGeneration.from_pretrained(model_checkpoint)
+tokenizer = T5Tokenizer.from_pretrained('t5-small')
 
 if not args.non_copy:
-    tokenizer = T5Tokenizer.from_pretrained('t5-small')
     tokenizer.add_special_tokens({'additional_special_tokens': list(RESERVED_TOKENS)})
-    model.resize_token_embeddings(len(tokenizer))
+    tokenizer_name = 't5-small_copy'
+else:
+    tokenizer.add_special_tokens({'additional_special_tokens': list(NON_CPY_TOKENS)})
+    tokenizer_name = 't5-small_noncopy'
+
+model.resize_token_embeddings(len(tokenizer))
+
+tokenizer.save_pretrained(f"./models/{tokenizer_name}/")
 
 model.to(device)
 
