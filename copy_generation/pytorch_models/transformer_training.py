@@ -103,7 +103,7 @@ tokenizer.save_pretrained(f"./models/{tokenizer_name}/")
 
 model.to(device)
 
-vocab_stats['tokenizer_new_size'] = tokenizer.vocab_size
+vocab_stats['tokenizer_new_size'] = len(tokenizer)
 
 # Save vocab_stats as pickle
 if not os.path.exists(f"./models/{tokenizer_name}_vocab"):
