@@ -106,6 +106,9 @@ model.to(device)
 vocab_stats['tokenizer_new_size'] = tokenizer.vocab_size
 
 # Save vocab_stats as pickle
+if not os.path.exists(f"./models/{tokenizer_name}_vocab"):
+    os.makedirs(f"./models/{tokenizer_name}_vocab")
+
 with open(f"./models/{tokenizer_name}_vocab/vocab_stats.pkl", 'wb') as f:
    pickle.dump(vocab_stats, f) 
 
