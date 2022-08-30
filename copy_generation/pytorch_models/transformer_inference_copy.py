@@ -107,9 +107,9 @@ weight_decay = 0.01
 step = 0
 
 if args.non_copy:
-    test_dataset = TestDataset(eval_data, 'pseudo_token', pseudo_full_voc_train)
+    test_dataset = TestDataset(eval_data, 'pseudo_token', pseudo_full_voc)
 else:
-    test_dataset = TestDataset(eval_data, 'pseudo_gen_seq', pseudo_copy_voc_train) 
+    test_dataset = TestDataset(eval_data, 'pseudo_gen_seq', pseudo_copy_voc) 
 
 print(len(test_dataset.source_vocab.stoi))
 
