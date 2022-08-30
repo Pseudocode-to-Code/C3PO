@@ -84,7 +84,7 @@ model_checkpoint = "./t5-small"
 model = T5ForConditionalGeneration.from_pretrained(model_checkpoint)
 tokenizer = T5Tokenizer.from_pretrained('t5-small')
 
-new_tokens = pseudo_voc.vocab - set(tokenizer.vocab.keys())
+new_tokens = pseudo_voc.vocab - set(tokenizer.get_vocab().keys())
 new_tokens = new_tokens.union(code_voc.vocab)
 tokenizer.add_tokens(list(new_tokens))
 
