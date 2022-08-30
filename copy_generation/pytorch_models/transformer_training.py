@@ -1,6 +1,7 @@
 import argparse
 from hashlib import new
 import time
+import pickle
 import os
 from xml.dom import ValidationErr
 import torch
@@ -84,25 +85,29 @@ model_checkpoint = "./t5-small"
 model = T5ForConditionalGeneration.from_pretrained(model_checkpoint)
 tokenizer = T5Tokenizer.from_pretrained('t5-small')
 
-
-if not args.non_copy:
-    tokenizer.add_special_tokens({'additional_special_tokens': list(RESERVED_TOKENS)})
-    tokenizer_name = 't5-small_copy'
-else:
-    tokenizer.add_special_tokens({'additional_special_tokens': list(NON_CPY_TOKENS)})
-    tokenizer_name = 't5-small_noncopy'
+vocab_stats['tokenizer_old_size'] = tokenizer.vocab_size
 
 new_tokens = pseudo_voc.vocab - set(tokenizer.get_vocab().keys())
 new_tokens = new_tokens.union(code_voc.vocab)
-tokenizer.add_tokens(list(new_tokens))
 
+if not args.non_copy:
+    new_tokens = new_tokens.union(RESERVED_TOKENS)
+    tokenizer_name = 't5-small_copy'
+else:
+    new_tokens = new_tokens.union(NON_CPY_TOKENS)
+    tokenizer_name = 't5-small_noncopy'
 
+tokenizer.add_special_tokens({'additional_special_tokens': list(new_tokens)})
 model.resize_token_embeddings(len(tokenizer))
 tokenizer.save_pretrained(f"./models/{tokenizer_name}/")
 
 model.to(device)
 
+vocab_stats['tokenizer_new_size'] = tokenizer.vocab_size
 
+# Save vocab_stats as pickle
+with open(f"./models/{tokenizer_name}/vocab_stats.pkl", 'wb') as f:
+   pickle.dump(vocab_stats, f) 
 
 # model_name = model_checkpoint.split("/")[-1]
 
