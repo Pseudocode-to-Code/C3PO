@@ -84,9 +84,6 @@ model_checkpoint = "./t5-small"
 model = T5ForConditionalGeneration.from_pretrained(model_checkpoint)
 tokenizer = T5Tokenizer.from_pretrained('t5-small')
 
-new_tokens = pseudo_voc.vocab - set(tokenizer.get_vocab().keys())
-new_tokens = new_tokens.union(code_voc.vocab)
-tokenizer.add_tokens(list(new_tokens))
 
 if not args.non_copy:
     tokenizer.add_special_tokens({'additional_special_tokens': list(RESERVED_TOKENS)})
@@ -94,6 +91,11 @@ if not args.non_copy:
 else:
     tokenizer.add_special_tokens({'additional_special_tokens': list(NON_CPY_TOKENS)})
     tokenizer_name = 't5-small_noncopy'
+
+new_tokens = pseudo_voc.vocab - set(tokenizer.get_vocab().keys())
+new_tokens = new_tokens.union(code_voc.vocab)
+tokenizer.add_tokens(list(new_tokens))
+
 
 model.resize_token_embeddings(len(tokenizer))
 tokenizer.save_pretrained(f"./models/{tokenizer_name}/")
