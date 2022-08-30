@@ -7,7 +7,7 @@ import os
 from xml.dom import ValidationErr
 import torch
 from tqdm import tqdm
-from transformers import T5ForConditionalGeneration, T5Tokenizer
+from transformers import T5ForConditionalGeneration, T5Tokenizer, RobertaTokenizer
 from torch.utils.tensorboard import SummaryWriter
 from torch.nn import CrossEntropyLoss
 import pandas as pd
@@ -82,9 +82,10 @@ step = 0
 
 # Use the t5-small pretrained transformer
 
-model_checkpoint = "./t5-small"
+# model_checkpoint = "./t5-small"
+model_checkpoint = "Salesforce/codet5-small"
 model = T5ForConditionalGeneration.from_pretrained(model_checkpoint)
-tokenizer = T5Tokenizer.from_pretrained('t5-small')
+tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-small')
 
 vocab_stats['tokenizer_old_size'] = tokenizer.vocab_size
 
@@ -96,11 +97,11 @@ new_tokens.remove('')
 if not args.non_copy:
     new_tokens = new_tokens.union(RESERVED_TOKENS)
     new_tokens = list(sorted(list(new_tokens), reverse=True))
-    tokenizer_name = 't5-small_copy'
+    tokenizer_name = 'codet5-small_copy'
 else:
     new_tokens = new_tokens.union(NON_CPY_TOKENS)
     new_tokens = list(sorted(list(new_tokens), reverse=True))
-    tokenizer_name = 't5-small_noncopy'
+    tokenizer_name = 'codet5-small_noncopy'
 
 tokenizer.add_special_tokens({'additional_special_tokens': list(new_tokens)})
 model.resize_token_embeddings(len(tokenizer))

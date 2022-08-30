@@ -3,7 +3,7 @@ import torch
 from typing import Tuple
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-from transformers import T5Tokenizer
+from transformers import PreTrainedTokenizer
 from torch.nn.utils.rnn import pad_sequence
 
 # Vocab indices of constants
@@ -123,7 +123,7 @@ class TrainDataset(Dataset):
         source_vocab (Vocabulary): vocabulary of source column
         target_vocal (Vocabulary): vocabulary of target column
     """
-    def __init__(self, df: pd.DataFrame, src_col: str, targ_col: str, use_tokenizer: T5Tokenizer=None):
+    def __init__(self, df: pd.DataFrame, src_col: str, targ_col: str, use_tokenizer: PreTrainedTokenizer=None):
         """
         Args:
             df (DataFrame): dataframe containing the X and y columns
@@ -183,12 +183,12 @@ class TrainDataset(Dataset):
 
 class TestDataset(Dataset):
 
-    def __init__(self, df, src_col, use_tokenizer: T5Tokenizer=None):
+    def __init__(self, df, src_col, use_tokenizer: PreTrainedTokenizer=None):
         """
         Args:
             df (DataFrame): dataframe containing the X and y columns
             src_col (str): source column name
-            use_tokenizer (T5Tokenizer): tokenizer to use for numericalizing
+            use_tokenizer (PreTrainedTokenizer): tokenizer to use for numericalizing
         """
         self.df = df 
         self.src_col = src_col
