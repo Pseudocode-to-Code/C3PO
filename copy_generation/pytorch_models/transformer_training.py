@@ -5,8 +5,8 @@ from xml.dom import ValidationErr
 import torch
 from tqdm import tqdm
 from transformers import T5ForConditionalGeneration, T5Tokenizer
-from torch.nn import CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
+from torch.nn import CrossEntropyLoss
 import pandas as pd
 from transformer_dataloader import Vocabulary, TrainDataset, get_train_loader, PAD_INDEX, RESERVED_TOKENS
 
@@ -148,6 +148,7 @@ for epoch in range(num_epochs):
 
         outputs = outputs
         running_loss += loss.item()
+
 
         loss.backward()
         optimizer.step()
