@@ -1,4 +1,5 @@
 import argparse
+from hashlib import new
 import time
 import os
 from xml.dom import ValidationErr
@@ -28,24 +29,28 @@ model_type = 'transformer_fixed_tokenizer'
 data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
 
 # Create pseudocode and code vocabularies
-# pseudo_voc = Vocabulary('pseudocode')
-# code_voc = Vocabulary('code')
+pseudo_voc = Vocabulary('pseudocode')
+code_voc = Vocabulary('code')
 source_col = ''
 target_col = ''
 
 if args.non_copy:
     source_col = 'pseudo_token'
     target_col = 'code_token'
-    # pseudo_voc.build_vocabulary(data, source_col)
-    # code_voc.build_vocabulary(data, target_col)
+    pseudo_voc.build_vocabulary(data, source_col)
+    code_voc.build_vocabulary(data, target_col)
     model_type += '_noncopy'
 else:
     source_col = 'pseudo_gen_seq'
     target_col = 'code_gen_seq'
-    # pseudo_voc.build_vocabulary(data, source_col)
-    # code_voc.build_vocabulary(data, target_col)
+    pseudo_voc.build_vocabulary(data, source_col)
+    code_voc.build_vocabulary(data, target_col)
     model_type += '_copy'
 
+vocab_stats = {
+    'tokenizer_old_size': 0,
+    'tokenizer_new_size': 0
+}
 
 
 # Model hyperparameters
@@ -79,6 +84,10 @@ model_checkpoint = "./t5-small"
 model = T5ForConditionalGeneration.from_pretrained(model_checkpoint)
 tokenizer = T5Tokenizer.from_pretrained('t5-small')
 
+new_tokens = pseudo_voc.vocab - set(tokenizer.vocab.keys())
+new_tokens = new_tokens.union(code_voc.vocab)
+tokenizer.add_tokens(list(new_tokens))
+
 if not args.non_copy:
     tokenizer.add_special_tokens({'additional_special_tokens': list(RESERVED_TOKENS)})
     tokenizer_name = 't5-small_copy'
@@ -87,7 +96,6 @@ else:
     tokenizer_name = 't5-small_noncopy'
 
 model.resize_token_embeddings(len(tokenizer))
-
 tokenizer.save_pretrained(f"./models/{tokenizer_name}/")
 
 model.to(device)

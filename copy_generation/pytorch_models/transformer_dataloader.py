@@ -183,25 +183,26 @@ class TrainDataset(Dataset):
 
 class TestDataset(Dataset):
 
-    def __init__(self, df, src_col, src_vocab):
+    def __init__(self, df, src_col, use_tokenizer: T5Tokenizer=None):
         """
-            src_vocab is training pseudo vocab that will be used for numericalizing because the model was trained on those indexes
+        Args:
+            df (DataFrame): dataframe containing the X and y columns
+            src_col (str): source column name
+            use_tokenizer (T5Tokenizer): tokenizer to use for numericalizing
         """
         self.df = df 
         self.src_col = src_col
 
-        ## src_vocab passed in is vocab from train set
-        self.source_vocab = src_vocab
-        # self.source_vocab = Vocabulary()
-        # self.source_vocab.build_vocabulary(self.df, src_col)
+        # Tokenizer used in training
+        self.use_tokenizer = use_tokenizer
 
     def __len__(self):
-        return len(self.df)
+        return self._len
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> torch.Tensor:
         src_text = self.df.iloc[index][self.src_col]
 
-        numeric_src = self.source_vocab.numericalize(src_text)
+        numeric_src = [self.use_tokenizer.encode(s)[0] for s in src_text]
 
         return torch.Tensor(numeric_src)
 
