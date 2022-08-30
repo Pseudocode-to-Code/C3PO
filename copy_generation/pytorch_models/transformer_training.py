@@ -15,28 +15,28 @@ parser.add_argument('--non-copy', '-n', default=False, action='store_true', help
 parser.add_argument('--resume', '-r', default = 0, help='Training resumption. Pass the epoch number from which to resume')
 args = parser.parse_args()
 
-model_type = 'transformer_new_pad'
+model_type = 'transformer_fixed_tokenizer'
 
 # Read CPY dataset
 data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
 
 # Create pseudocode and code vocabularies
-pseudo_voc = Vocabulary('pseudocode')
-code_voc = Vocabulary('code')
+# pseudo_voc = Vocabulary('pseudocode')
+# code_voc = Vocabulary('code')
 source_col = ''
 target_col = ''
 
 if args.non_copy:
     source_col = 'pseudo_token'
     target_col = 'code_token'
-    pseudo_voc.build_vocabulary(data, source_col)
-    code_voc.build_vocabulary(data, target_col)
+    # pseudo_voc.build_vocabulary(data, source_col)
+    # code_voc.build_vocabulary(data, target_col)
     model_type += '_noncopy'
 else:
     source_col = 'pseudo_gen_seq'
     target_col = 'code_gen_seq'
-    pseudo_voc.build_vocabulary(data, source_col)
-    code_voc.build_vocabulary(data, target_col)
+    # pseudo_voc.build_vocabulary(data, source_col)
+    # code_voc.build_vocabulary(data, target_col)
     model_type += '_copy'
 
 
@@ -52,15 +52,15 @@ batch_size = 8
 weight_decay = 0.01
 save_total_limit = num_epochs
 
-for key, value in pseudo_voc.itos.items():
-    if pseudo_voc.stoi[value] != key:
-        raise ValidationErr('Pseudocode vocabulary error')
+# for key, value in pseudo_voc.itos.items():
+#     if pseudo_voc.stoi[value] != key:
+#         raise ValidationErr('Pseudocode vocabulary error')
 
-for key, value in code_voc.itos.items():
-    if code_voc.stoi[value] != key:
-        raise ValidationErr('Code vocabulary error')
+# for key, value in code_voc.itos.items():
+#     if code_voc.stoi[value] != key:
+#         raise ValidationErr('Code vocabulary error')
 
-print('Finished building vocabularies')
+# print('Finished building vocabularies')
 
 
 writer = SummaryWriter(f"runs/{model_type}") # CHANGE BASED ON CASE
@@ -73,7 +73,7 @@ model = T5ForConditionalGeneration.from_pretrained(model_checkpoint)
 
 if not args.non_copy:
     tokenizer = T5Tokenizer.from_pretrained('t5-small')
-    tokenizer.add_tokens(RESERVED_TOKENS)
+    tokenizer.add_special_tokens({'additional_special_tokens': list(RESERVED_TOKENS)})
     model.resize_token_embeddings(len(tokenizer))
 
 model.to(device)
@@ -99,7 +99,7 @@ model.to(device)
 # data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
 
 
-train_dataset = TrainDataset(data, source_col, target_col)
+train_dataset = TrainDataset(data, source_col, target_col, use_tokenizer=tokenizer)
 train_loader = get_train_loader(train_dataset, batch_size)
 
 model.train()

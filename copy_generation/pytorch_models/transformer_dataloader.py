@@ -3,6 +3,7 @@ import torch
 from typing import Tuple
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
+from transformers import T5Tokenizer
 from torch.nn.utils.rnn import pad_sequence
 
 # Vocab indices of constants
@@ -121,7 +122,7 @@ class TrainDataset(Dataset):
         source_vocab (Vocabulary): vocabulary of source column
         target_vocal (Vocabulary): vocabulary of target column
     """
-    def __init__(self, df: pd.DataFrame, src_col: str, targ_col: str):
+    def __init__(self, df: pd.DataFrame, src_col: str, targ_col: str, use_tokenizer: T5Tokenizer=None):
         """
         Args:
             df (DataFrame): dataframe containing the X and y columns
@@ -131,14 +132,30 @@ class TrainDataset(Dataset):
         self.df = df[[src_col, targ_col]]
         self.src_col = src_col
         self.targ_col = targ_col
+        self.use_tokenizer = use_tokenizer
+        self.source_vocab = None
+        self.target_vocab = None
+        self.tokenizer = None
 
-        self.source_vocab = Vocabulary('source_vocab')
-        self.source_vocab.build_vocabulary(self.df, src_col)
+        if self.use_tokenizer is None:
 
-        self.target_vocab = Vocabulary('target_vocab')
-        self.target_vocab.build_vocabulary(self.df, targ_col)
+            self.source_vocab = Vocabulary('source_vocab')
+            self.source_vocab.build_vocabulary(self.df, src_col)
+
+            self.target_vocab = Vocabulary('target_vocab')
+            self.target_vocab.build_vocabulary(self.df, targ_col)
 
         self._len = df.shape[0]
+
+    def get_pad_index(self) -> int:
+        """
+        Returns index of the [PAD] token
+        """
+        if self.use_tokenizer is None:
+            return self.source_vocab.stoi[PAD_TOKEN]
+
+        else:
+            return self.use_tokenizer(PAD_TOKEN).input_ids[0]
 
     def __len__(self):
         return self._len
@@ -151,9 +168,15 @@ class TrainDataset(Dataset):
         src_text = self.df.iloc[index][self.src_col]
         target_text = self.df.iloc[index][self.targ_col]
 
-        numeric_src = self.source_vocab.numericalize(src_text)
-        numeric_targ = self.target_vocab.numericalize(target_text)
+        if self.use_tokenizer is None:
+            numeric_src = self.source_vocab.numericalize(src_text)
+            numeric_targ = self.target_vocab.numericalize(target_text)
+        else:
+            numeric_src = [self.use_tokenizer.encode(s)[0] for s in src_text]
+            numeric_targ = [self.use_tokenizer.encode(s)[0] for s in target_text]
 
+        # print(numeric_src, numeric_targ)
+        # print(type(numeric_src), type(numeric_targ))
         return torch.Tensor(numeric_src), torch.Tensor(numeric_targ)
 
 
@@ -242,7 +265,7 @@ def get_train_loader(
     """
     
     # Get pad_idx for collate fn
-    pad_idx = dataset.source_vocab.stoi[PAD_TOKEN]
+    pad_idx = dataset.get_pad_index()
 
     # Define loader
     loader = DataLoader(dataset, 
