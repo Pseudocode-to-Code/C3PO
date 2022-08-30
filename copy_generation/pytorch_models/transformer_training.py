@@ -1,5 +1,6 @@
 import argparse
 from hashlib import new
+import re
 import time
 import pickle
 import os
@@ -89,12 +90,16 @@ vocab_stats['tokenizer_old_size'] = tokenizer.vocab_size
 
 new_tokens = pseudo_voc.vocab - set(tokenizer.get_vocab().keys())
 new_tokens = new_tokens.union(code_voc.vocab)
+new_tokens.remove('')
+
 
 if not args.non_copy:
     new_tokens = new_tokens.union(RESERVED_TOKENS)
+    new_tokens = list(sorted(list(new_tokens), reverse=True))
     tokenizer_name = 't5-small_copy'
 else:
     new_tokens = new_tokens.union(NON_CPY_TOKENS)
+    new_tokens = list(sorted(list(new_tokens), reverse=True))
     tokenizer_name = 't5-small_noncopy'
 
 tokenizer.add_special_tokens({'additional_special_tokens': list(new_tokens)})
