@@ -106,7 +106,7 @@ model.to(device)
 vocab_stats['tokenizer_new_size'] = tokenizer.vocab_size
 
 # Save vocab_stats as pickle
-with open(f"./models/{tokenizer_name}/vocab_stats.pkl", 'wb') as f:
+with open(f"./models/{tokenizer_name}_vocab/vocab_stats.pkl", 'wb') as f:
    pickle.dump(vocab_stats, f) 
 
 # model_name = model_checkpoint.split("/")[-1]
