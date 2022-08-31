@@ -136,7 +136,6 @@ class TrainDataset(Dataset):
         self.use_tokenizer = use_tokenizer
         self.source_vocab = None
         self.target_vocab = None
-        self.tokenizer = None
 
         if self.use_tokenizer is None:
 
@@ -190,8 +189,9 @@ class TestDataset(Dataset):
             src_col (str): source column name
             use_tokenizer (PreTrainedTokenizer): tokenizer to use for numericalizing
         """
-        self.df = df 
+        self.df = df
         self.src_col = src_col
+        self._len = df.shape[0]
 
         # Tokenizer used in training
         self.use_tokenizer = use_tokenizer
