@@ -196,6 +196,16 @@ class TestDataset(Dataset):
         # Tokenizer used in training
         self.use_tokenizer = use_tokenizer
 
+    def get_pad_index(self) -> int:
+        """
+        Returns index of the [PAD] token
+        """
+        if self.use_tokenizer is None:
+            return None
+
+        else:
+            return self.use_tokenizer(PAD_TOKEN).input_ids[0]
+
     def __len__(self):
         return self._len
 
