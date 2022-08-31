@@ -290,13 +290,14 @@ def get_test_loader(
     pin_memory: bool=True
 ): #increase num_workers according to CPU
     #get pad_idx for collate fn
-    pad_idx = dataset.source_vocab.stoi[PAD_TOKEN]
+    pad_idx = dataset.get_pad_index()
     #define loader
     loader = DataLoader(dataset, 
                 batch_size=batch_size, 
                 num_workers=num_workers,
                 shuffle=shuffle,
-                pin_memory=pin_memory
+                pin_memory=pin_memory,
+                collate_fn = MyCollate(pad_idx=pad_idx)
             ) 
     #MyCollate class runs __call__ method by default
     return loader
