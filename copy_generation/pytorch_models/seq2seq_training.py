@@ -132,6 +132,10 @@ decoder_net = Decoder(
 ).to(device)
 
 model = S2SModel(encoder_net, decoder_net, device).to(device)
+
+pytorch_total_params = sum(p.numel() for p in model.parameters())
+print('Number of trainable parameters', pytorch_total_params)
+
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 pad_idx = code_voc.stoi[PAD_TOKEN]
