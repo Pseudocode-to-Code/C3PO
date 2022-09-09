@@ -32,6 +32,9 @@ pseudo_copy_voc_train = Vocabulary('train pseudo with cpy')
 pseudo_full_voc_train.build_vocabulary(train_data, 'pseudo_token')
 pseudo_copy_voc_train.build_vocabulary(train_data, 'pseudo_gen_seq')
 
+pseudo_full_voc_eval = Vocabulary('eval pseudocode')
+pseudo_full_voc_eval.build_vocabulary(eval_data, 'pseudo_token')
+
 if args.non_copy:
     # pseudo_full_voc_eval.build_vocabulary(eval_data, 'pseudo_token')
     pseudo_voc.build_vocabulary(eval_data, 'pseudo_token')
@@ -174,7 +177,7 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
                     index = cpy_indexes[cpy_cnt]
                     pseudo_token = actual_pseudo[index]
 
-                    token_index = pseudo_copy_voc_train.stoi[pseudo_token] 
+                    token_index = pseudo_full_voc_eval.stoi[pseudo_token] 
                     output_replaced.append(-token_index)
                     prev_output.append(best_guess)
                     cpy_cnt += 1
@@ -200,7 +203,7 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
             if token >= 0:
                 string_outputs.append(code_voc.itos[token])
             else:
-                string_outputs.append(pseudo_copy_voc_train.itos[-token])
+                string_outputs.append(pseudo_full_voc_eval.itos[-token])
 
     outputs.append(prev_output[1:-1])
     final_code.append(string_outputs[1:-1])
