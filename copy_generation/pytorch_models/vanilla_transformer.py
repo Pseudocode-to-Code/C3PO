@@ -1,3 +1,4 @@
+import code
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -119,21 +120,26 @@ load_model = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Training hyperparameters
-num_epochs = 10
+num_epochs = 100
 learning_rate = 0.001 #3e-4
-batch_size = 8
+batch_size = 32
 
 # Model hyperparameters
 src_vocab_size = len(pseudo_voc)
 trg_vocab_size = len(code_voc)
-embedding_size = 128
-num_heads = 4
-num_encoder_layers = 2
-num_decoder_layers = 2
+embedding_size = 512
+num_heads = 8
+num_encoder_layers = 3
+num_decoder_layers = 3
 dropout = 0.10
 max_len = 87 # From experimentation.ipynb or get_max_len from generate.ipynb
-forward_expansion = 2
-src_pad_idx = code_voc.stoi["[PAD]"]
+forward_expansion = 4
+src_pad_idx = code_voc.stoi[PAD_TOKEN]
+
+print('Pseudo Vocab', len(pseudo_voc))
+print('Code Voc', len(code_voc))
+print('Device', device)
+print('Hyperparams', batch_size, embedding_size, forward_expansion, num_encoder_layers)
 
 # Tensorboard to get nice loss plot
 writer = SummaryWriter(f"runs/{model_type}") # CHANGE BASED ON CASE
