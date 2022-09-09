@@ -19,24 +19,6 @@ args = parser.parse_args()
 
 model_type = 'vanilla_transformer'
 
-# if args.attention:
-#     print('Activating Attention Models')
-#     Encoder = AttnEncoder
-#     Decoder = AttnDecoder
-#     S2SModel = AttnSeq2Seq
-#     model_type += 'attention_s2s'
-# else:
-#     print('Activating Vanilla Models')
-#     Encoder = S2SEncoder
-#     Decoder = S2SDecoder
-#     S2SModel = VanillaSeq2Seq
-#     model_type += 'vanilla_s2s'
-
-# f = open('../../data/CPY_dataset.pkl', 'rb')
-# data = pickle.load(f)
-# f.close()
-# data
-
 # Read CPY dataset
 train_data = pd.read_pickle('../../data/CPY_dataset_new.pkl')
 
@@ -44,25 +26,22 @@ MAXLEN = 74 # Got from experimentation.ipynb
 eval_data = pd.read_pickle('../../data/CPY_dataset_eval_tree_copy.pkl')
 
 pseudo_voc = Vocabulary('pseudocode')
+
+pseudo_full_voc_train = Vocabulary('train pseudocode')
+pseudo_copy_voc_train = Vocabulary('train pseudo with cpy')
+pseudo_full_voc_train.build_vocabulary(train_data, 'pseudo_token')
+pseudo_copy_voc_train.build_vocabulary(train_data, 'pseudo_gen_seq')
+
 if args.non_copy:
-    pseudo_voc.build_vocabulary(train_data, 'pseudo_token')
+    # pseudo_full_voc_eval.build_vocabulary(eval_data, 'pseudo_token')
+    pseudo_voc.build_vocabulary(eval_data, 'pseudo_token')
+    pseudo_voc_size = len(pseudo_full_voc_train)
     model_type += '_noncopy'
 else:
-    pseudo_voc.build_vocabulary(train_data, 'pseudo_gen_seq')
+    # pseudo_full_voc_eval.build_vocabulary(eval_data, 'pseudo_gen_seq')
+    pseudo_voc.build_vocabulary(eval_data, 'pseudo_gen_seq')
+    pseudo_voc_size = len(pseudo_copy_voc_train)
     model_type += '_copy'
-
-pseudo_voc_size = len(pseudo_voc)
-
-# pseudo_full_voc_train = Vocabulary('train pseudocode')
-# pseudo_copy_voc_train = Vocabulary('train pseudo with cpy')
-# pseudo_full_voc_eval = Vocabulary('eval pseudocode')
-# pseudo_copy_voc_eval = Vocabulary('eval pseudo with cpy')
-
-# pseudo_full_voc_train.build_vocabulary(train_data, 'pseudo_token')
-# pseudo_copy_voc_train.build_vocabulary(train_data, 'pseudo_gen_seq')
-
-# pseudo_full_voc_eval.build_vocabulary(eval_data, 'pseudo_token')
-# pseudo_copy_voc_eval.build_vocabulary(eval_data, 'pseudo_gen_seq')
 
 
 code_voc = Vocabulary('code')
@@ -75,7 +54,7 @@ else:
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Model hyperparameters
-src_vocab_size = len(pseudo_voc)
+src_vocab_size = pseudo_voc_size
 trg_vocab_size = len(code_voc)
 embedding_size = 512
 num_heads = 8
@@ -152,19 +131,26 @@ outputs = []
 for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
     inp_data = batch.permute(1,0).to(dtype=torch.int64, device=device) # Permute because model expects 1 column with all words indexes
 
-
-    # TODO replace UNK tags if any with CPY tags
-    # unks = torch.where(inp_data == pseudo_copy_voc_train.stoi['[UNK]'])[0]
-    # if len(unks) > 0:
-    #     inp_data[unks] = pseudo_copy_voc_train.stoi['[CPY]']
+    if not args.non_copy:
+        unks = torch.where(inp_data == UNKNOWN_INDEX)[0]
+        if len(unks) > 0:
+            inp_data[unks] = CPY_INDEX
 
     prev_output = [START_INDEX]
+    output_replaced = []
+
+    copy_seq = eval_data['dt_copy_seq'][batch_idx]
+    actual_pseudo = eval_data['pseudo_token'][batch_idx]
+
+    cpy_indexes = np.where(copy_seq == 1)[0]
+    cpy_cnt = 0
 
     # unks = torch.where(inp_data == pseudo_voc.stoi['[UNK]'])[0]
     # if len(unks) > 0:
     #     inp_data[unks] = pseudo_voc.stoi['[CPY]']
     
-    for i in range(MAXLEN):
+
+    for _ in range(MAXLEN):
 
         with torch.no_grad():
             # Forward prop
@@ -183,10 +169,25 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
             output = output.reshape(-1, output.shape[2])
             best_guess = output[-1,:].argmax().item()
 
+        if not args.non_copy and best_guess == CPY_INDEX:
+                if cpy_cnt < len(cpy_indexes): 
+                    index = cpy_indexes[cpy_cnt]
+                    pseudo_token = actual_pseudo[index]
+
+                    token_index = pseudo_copy_voc_train.stoi[pseudo_token] 
+                    output_replaced.append(-token_index)
+                    prev_output.append(best_guess)
+                    cpy_cnt += 1
+                else: # If more CPY tags generated do not add anything
+                    pass
+        else:
+            output_replaced.append(best_guess)
             prev_output.append(best_guess)
 
-            if best_guess == STOP_INDEX:
-                break
+        if best_guess == STOP_INDEX:
+            break
+        
+
 
     if args.non_copy:
         string_outputs = [code_voc.itos[index] for index in prev_output]
@@ -195,11 +196,11 @@ for batch_idx, batch in enumerate(tqdm(test_loader, unit='lines')):
         ### Convert to string
         string_outputs = []
 
-        for token in prev_output:
+        for token in output_replaced:
             if token >= 0:
                 string_outputs.append(code_voc.itos[token])
             else:
-                string_outputs.append(pseudo_voc.itos[-token])
+                string_outputs.append(pseudo_copy_voc_train.itos[-token])
 
     outputs.append(prev_output[1:-1])
     final_code.append(string_outputs[1:-1])
