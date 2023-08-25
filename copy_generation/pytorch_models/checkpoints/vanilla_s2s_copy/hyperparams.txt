@@ -1,4 +1,0 @@
-batch_size = 64
-encoder_embedding size = 300
-decoder_embedding size = 300
-hidden size = 1024
