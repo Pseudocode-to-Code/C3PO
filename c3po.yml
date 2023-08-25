@@ -1,4 +1,4 @@
-name: spoc
+name: c3po
 channels:
   - conda-forge
   - pytorch  
