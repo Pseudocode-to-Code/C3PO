@@ -1,9 +1,9 @@
 # C3PO: A Lightweight Copying Mechanism for Translating Pseudocode to Code
 
-Code for the C3PO paper published at AACL-IJCNLP 2022 (Student Research Workshop)
-[[PAPER LINK]](https://aclanthology.org/2022.aacl-srw.7.pdf)
+Source Code for the C3PO paper published at AACL-IJCNLP 2022 (Student Research Workshop)
+[[Paper]](https://aclanthology.org/2022.aacl-srw.7.pdf)
 
-![C3PO figure](readme_figures/c3po.png)
+![C3PO figure](figures/c3po.png)
 
 # Stages of the Pipline 
 1. Copy Phase 
@@ -50,3 +50,15 @@ Inference scripts are included in `inference/scripts/`. The predictions are rele
 4. Vanilla Seq2Seq w/o C3PO (No CPY masking)
 
 The results (BLEU scores) are computed using these prediction files in `inference/results.ipynb`
+
+# Citation 
+If you used this work in your research, please cite:
+```
+@inproceedings{veerendranath2022c3po,
+    title={C3PO: A Lightweight Copying Mechanism for Translating Pseudocode to Code},
+    author={Veerendranath, Vishruth and Masti, Vibha and Anagani, Prajwal and Hr, Mamatha},
+    booktitle={Proceedings of the 2nd Conference of the Asia-Pacific Chapter of the Association for Computational Linguistics and the 12th International Joint Conference on Natural Language Processing: Student Research Workshop},
+    pages={47--53},
+    year={2022}
+}
+```
